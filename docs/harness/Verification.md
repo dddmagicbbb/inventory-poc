@@ -36,10 +36,25 @@ npm run verify
 | 2 | **Types** | `typecheck` | `tsc --noEmit` · 설정 [`tsconfig.json`](../../tsconfig.json) | — |
 | 3 | **Lint** | `lint` | ESLint (Next.js core-web-vitals · typescript) · 설정 [`eslint.config.mjs`](../../eslint.config.mjs) | — |
 | 4 | **Architecture** | `check:architecture` | 재고 변경이 `applyMovement()`만 거치는지 구문 분석 · [`scripts/check-architecture.ts`](../../scripts/check-architecture.ts) | [06](../06-architecture.md) §2 "규칙 하나" · §4.1 |
-| 5 | **Test** | `test` | Vitest · `tests/**/*.test.ts` · 설정 [`vitest.config.ts`](../../vitest.config.ts) | [06](../06-architecture.md) §9 불변식 |
+| 5 | **Test** | `test` | Vitest · `tests/**/*.test.ts` (Issue 종료 조건 테스트 포함 — [2-1절](#2-1-issue-종료-조건-테스트)) · 설정 [`vitest.config.ts`](../../vitest.config.ts) | [06](../06-architecture.md) §9 불변식 · 각 Issue의 종료 조건 |
 | 6 | **Build** | `build` | `prisma generate` + `next build` | — |
 
 각 단계의 상세 규칙(무엇을 허용하고 무엇을 막는지)은 위 파일의 머리 주석과 코드에 있다. 여기에 옮겨 적지 않는다.
+
+## 2-1. Issue 종료 조건 테스트
+
+Issue의 **3. 종료 조건**은 사람이 읽는 문장이고, 그것을 기계가 판정하는 곳이 이 테스트다.
+
+| 항목 | 규칙 |
+|---|---|
+| 위치 · 이름 | `tests/issues/issue-{Issue 번호}-{기능명}.test.ts` — 기능명은 영문 소문자 kebab-case (예: `issue-12-qty-input-decimal.test.ts`) |
+| 대응 | **종료 조건 한 줄 = `it()` 하나.** `it()` 이름은 종료 조건 문장을 그대로 쓴다 |
+| 묶음 | `describe('#{번호} {Issue 제목}')` 하나로 감싼다 |
+| 데이터 | 검증 DB를 쓴다. 다른 테스트처럼 **자기가 만든 데이터만** 앞뒤로 정리한다 (`tests/helpers.ts` 사용) |
+| 실행 | `npm run verify`의 Test 단계에 자동 포함 · Issue 테스트만: `npm run test:issues` · 한 Issue만: `npx vitest run issue-{번호}-` |
+| 수명 | Issue가 닫혀도 지우지 않는다. 같은 동작이 다시 깨지는 것을 막는 회귀 테스트로 남는다 |
+
+Issue의 **4. 기계 검증** 칸에 이 파일 경로를 적고, 완료 보고 때 종료 조건과 `it()` 결과를 한 줄씩 대응시켜 보고한다.
 
 ---
 

@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
+    "test:issues": "vitest run tests/issues --passWithNoTests",
     "typecheck": "tsc --noEmit",
     "verify:prepare": "tsx scripts/verify-prepare.ts",
     "check:architecture": "tsx scripts/check-architecture.ts",

@@ -45,10 +45,12 @@ body:
     id: verification
     attributes:
       label: 4. 기계 검증
-      description: 어떤 테스트가 판정하는가. 실행할 명령과, 새로 만들거나 고칠 테스트를 적는다. `npm run verify` 통과는 기본이다.
+      description: |
+        어떤 테스트가 판정하는가. `npm run verify` 통과는 기본이다.
+        종료 조건은 `tests/issues/issue-{Issue 번호}-{기능명}.test.ts` 에서 **종료 조건 한 줄 = 테스트 하나**로 판정한다. 번호는 Issue가 만들어진 뒤 채운다.
       value: |
         - [ ] `npm run verify` 종료 코드 0 (Prepare → Types → Lint → Architecture → Test → Build)
-        - [ ] 이 작업을 판정하는 테스트: `tests/<파일>.test.ts` — <무엇을 확인하는가>
+        - [ ] 종료 조건 테스트: `tests/issues/issue-{번호}-{기능명}.test.ts` — 3번의 종료 조건을 모두 판정한다
     validations:
       required: true
 
