@@ -22,7 +22,7 @@
 | **재고 도메인** | [`docs/01-requirements.md`](../01-requirements.md) | 로트·거점 개념, 기능 요구(F1~F11), 사유 체계, 비기능 요구, 범위 제외, 완료 기준(DoD), 확정된 가정 | ✅ 지정 · [이관 대기 있음](#3-원본으로-옮겨야-할-것) |
 | **아키텍처** | [`docs/06-architecture.md`](../06-architecture.md) | 스택, 폴더 구조, 데이터 모델, 핵심 로직(재고 변경 통로·배분·정산·상쇄), 상태 흐름, 인증, 시드, 동시성, 불변식 | ✅ 지정 · [이관 대기 있음](#3-원본으로-옮겨야-할-것) |
 | **개별 작업** | **해당 GitHub Issue** (`dddmagicbbb/inventory-poc#번호`) | 작업 하나의 목적, 재현 절차, 완료 조건, 진행 상태, 관련 커밋·PR | ⚠ 저장소 Issues 기능이 **꺼져 있음** (2026-11-24 확인) |
-| **검증 규칙** | — | 무엇을 어떻게 검사해야 통과인가 | ⬜ [추후 생성](#5-추후-생성) · 스크립트로 대체 예정 |
+| **검증 규칙** | **스크립트** — [`package.json`](../../package.json) `scripts.verify` · [`scripts/`](../../scripts/) · [`.github/workflows/verify.yml`](../../.github/workflows/verify.yml) · 안내 [`Verification.md`](Verification.md) | 무엇을 어떻게 검사해야 통과인가 (`npm run verify` 종료 코드 0) | ✅ 지정 |
 | **구현·검증 루프** | — | 작업을 받아 구현 → 검증 → 기록까지 돌리는 절차 | ⬜ [추후 생성](#5-추후-생성) |
 
 ### 개별 작업 규칙
@@ -86,17 +86,17 @@
 ## 5. 추후 생성
 
 ### 검증 규칙
-> ⬜ **미작성.** 스크립트로 대체될 예정이다.
+> ✅ **작성됨 (2026-11-24).** 안내: [`Verification.md`](Verification.md)
 
-- 담을 것: 무엇을 통과해야 작업 완료인가 (자동 테스트 · 빌드 · 타입 검사 · 화면 검증 · 불변식)
-- 현재 흩어진 재료: 01 §7 완료 기준 · 06 §9 불변식 · 07 §2 QA 체크리스트 · `tests/` · `scripts/verify-*.ts`
-- 대체 형태: 스크립트가 원본이 되고, 문서는 그 스크립트를 가리키는 안내만 둔다
+- 형태: 스크립트가 원본이 되고, 문서는 그 스크립트를 가리키는 안내만 둔다
+- 원본: `package.json` `scripts.verify` (Prepare → Types → Lint → Architecture → Test → Build) · `scripts/` 의 검증 스크립트 · `.github/workflows/verify.yml`
+- 아직 검증하지 않는 것은 [`Verification.md`](Verification.md) §5에 있다
 
 ### 구현·검증 루프
 > ⬜ **미작성.**
 
 - 담을 것: Issue를 받아 브랜치 → 구현 → 검증 규칙 실행 → 커밋·push → Issue 갱신까지의 순서와 각 단계의 통과 조건
-- 선행 조건: 검증 규칙, GitHub Issues 활성화
+- 선행 조건: GitHub Issues 활성화 (검증 규칙은 마련됨)
 
 ---
 
@@ -148,11 +148,11 @@ NEEDS_HUMAN
 
 | 영역 | 해당 파일 | AI | 사람 |
 |---|---|---|---|
-| 애플리케이션 코드 | `src/` · `prisma/` · `scripts/` | Issue 범위 안에서 수정 | 최종 승인 |
+| 애플리케이션 코드 | `src/` · `prisma/` · `scripts/` (검증 스크립트 제외) | Issue 범위 안에서 수정 | 최종 승인 |
 | Issue별 테스트 | `tests/` | 작성 · 수정 | 전제 검토 |
 | 요구사항 · 아키텍처 | `docs/01-requirements.md` · `docs/06-architecture.md` | 읽기 | 변경 · 승인 |
 | 하네스 핵심 규칙 | `docs/harness/` · `AGENTS.md` · `CLAUDE.md` | 읽기 | 변경 · 승인 |
-| 검증 스크립트 | 추후 생성 ([5절](#5-추후-생성)) | 실행 | 정책 변경 승인 |
+| 검증 스크립트 | `package.json` `scripts` 의 검증 단계 · `scripts/verify-*.ts` · `scripts/check-architecture.ts` · `.github/workflows/` ([`Verification.md`](Verification.md)) | 실행 | 정책 변경 승인 |
 
 ### 보호 영역 변경
 - AI는 "읽기"·"실행"으로 지정된 영역을 **스스로 판단해 고치지 않는다.** 고쳐야 할 이유를 발견하면 사람에게 알리고 멈춘다.
