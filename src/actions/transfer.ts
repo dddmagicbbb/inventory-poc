@@ -51,6 +51,8 @@ export async function sendTransfer(input: {
           locationId: input.fromLocationId,
           quantity: line.quantity,
           strategy: ALLOCATION.LEFO,
+          // 거점 간 이동은 판매가 아니다 — 기준 미달 로트도 후보에 둔다 (06 §4.2)
+          includeUnsellable: true,
         })
 
         for (const a of plan) {

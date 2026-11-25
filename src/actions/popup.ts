@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { db } from '@/lib/db'
 import { requireUser, SessionExpiredError } from '@/lib/auth'
 import { applyMovement, InsufficientStockError } from '@/lib/stock'
-import { ALLOCATION, allocateLots } from '@/lib/fefo'
+import { ALLOCATION, allocateLots, SELLABLE_MIN_DAYS } from '@/lib/fefo'
 import { settlePopupTx, unsettlePopupTx } from '@/lib/popup'
 import { LOCATION_TYPES, MOVEMENT_TYPES, POPUP_STATUS } from '@/lib/constants'
 import { dateOnly } from '@/lib/date'
@@ -119,7 +119,7 @@ export async function shipOutPopup(input: {
       const product = await db.product.findUnique({ where: { id: e.detail.productId } })
       return {
         ok: false,
-        error: `${product?.name ?? '상품'} 재고가 부족합니다 (보유 ${e.detail.have}개, 입력 ${e.detail.want}개)`,
+        error: `${product?.name ?? '상품'} 재고가 부족합니다 (판매 가능 ${e.detail.have}개, 입력 ${e.detail.want}개 · 유통기한 ${SELLABLE_MIN_DAYS}일 미만 남은 로트 제외)`,
       }
     }
     return { ok: false, error: e instanceof Error ? e.message : '반출에 실패했습니다' }
