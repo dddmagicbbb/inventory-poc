@@ -47,7 +47,7 @@ export function TransferForm({
     const my = lots
       .filter((l) => l.productId === productId && l.locationId === Number(fromId))
       .map((l) => ({ id: l.id, expiryDate: new Date(l.expiry), quantity: l.quantity }))
-    return planAllocation(my, q, ALLOCATION.LEFO).plan
+    return planAllocation(my, q, ALLOCATION.LEFO, { includeUnsellable: true }).plan
   }
 
   const addToCart = () => {

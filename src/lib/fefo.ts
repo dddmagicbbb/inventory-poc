@@ -1,5 +1,7 @@
 import type { Prisma } from '@/generated/prisma/client'
 import { InsufficientStockError } from './stock'
+import { addDays, dateOnly, today } from './date'
+import { REASON_CODES, type ReasonCode } from './constants'
 
 /**
  * 로트 배분 전략 — 상황에 따라 방향이 반대다.
@@ -32,6 +34,32 @@ export const ALLOCATION_REASON: Record<AllocationStrategy, string> = {
 
 export type FefoLot = { id: number; expiryDate: Date; quantity: number }
 
+/**
+ * 판매 · 반출 가능 기준 — 유통기한이 오늘 + 7일 이상 남은 로트만 배분 후보다.
+ * 기준에 미달하는 로트(만료 7일 미만 잔여 · 이미 만료)는 폐기 경로로만 빠진다 (06 §4.2).
+ */
+export const SELLABLE_MIN_DAYS = 7
+
+/** 이 날짜(포함) 이후 만료되는 로트만 판매 · 반출 배분 후보다 */
+export const sellableCutoff = (asOf: Date = today()) => addDays(dateOnly(asOf), SELLABLE_MIN_DAYS)
+
+export const isSellableLot = (expiryDate: Date, asOf: Date = today()) =>
+  dateOnly(expiryDate).getTime() >= sellableCutoff(asOf).getTime()
+
+/** 기준 미달 로트를 써도 되는 사유 — 파손 · 폐기만 */
+export const UNSELLABLE_ALLOWED_REASONS: readonly ReasonCode[] = [
+  REASON_CODES.DAMAGE,
+  REASON_CODES.DISPOSE,
+]
+export const allowsUnsellable = (reason: ReasonCode) => UNSELLABLE_ALLOWED_REASONS.includes(reason)
+
+export type AllocationOptions = {
+  /** true면 기준 미달 로트도 후보에 넣는다 (파손 · 폐기, 거점 간 발송) */
+  includeUnsellable?: boolean
+  /** 기준일 — 기본은 오늘 */
+  asOf?: Date
+}
+
 export type Allocation = {
   lotId: number
   expiryDate: Date
@@ -43,11 +71,18 @@ export type Allocation = {
 export function planAllocation(
   lots: FefoLot[],
   quantity: number,
-  strategy: AllocationStrategy = ALLOCATION.FEFO
-): { plan: Allocation[]; shortage: number } {
+  strategy: AllocationStrategy = ALLOCATION.FEFO,
+  options: AllocationOptions = {}
+): { plan: Allocation[]; shortage: number; available: number; excluded: number } {
+  const { includeUnsellable = false, asOf } = options
   const dir = strategy === ALLOCATION.LEFO ? -1 : 1
-  const sorted = [...lots]
-    .filter((l) => l.quantity > 0)
+  const stocked = lots.filter((l) => l.quantity > 0)
+  const candidates = includeUnsellable
+    ? stocked
+    : stocked.filter((l) => isSellableLot(l.expiryDate, asOf))
+  const available = candidates.reduce((s, l) => s + l.quantity, 0)
+  const excluded = stocked.reduce((s, l) => s + l.quantity, 0) - available
+  const sorted = [...candidates]
     .sort((a, b) => dir * (a.expiryDate.getTime() - b.expiryDate.getTime()) || a.id - b.id)
 
   const plan: Allocation[] = []
@@ -59,12 +94,12 @@ export function planAllocation(
     plan.push({ lotId: lot.id, expiryDate: lot.expiryDate, qty: take, lotQuantity: lot.quantity })
     remain -= take
   }
-  return { plan, shortage: Math.max(0, remain) }
+  return { plan, shortage: Math.max(0, remain), available, excluded }
 }
 
 /** 하위 호환 — 기본은 FEFO */
-export const planFefo = (lots: FefoLot[], quantity: number) =>
-  planAllocation(lots, quantity, ALLOCATION.FEFO)
+export const planFefo = (lots: FefoLot[], quantity: number, options?: AllocationOptions) =>
+  planAllocation(lots, quantity, ALLOCATION.FEFO, options)
 
 /** 서버 전용 — 저장 직전에 DB의 현재 재고로 다시 계산한다 */
 export async function allocateLots(
@@ -74,20 +109,24 @@ export async function allocateLots(
     locationId: number
     quantity: number
     strategy?: AllocationStrategy
-  }
+  } & AllocationOptions
 ): Promise<Allocation[]> {
-  const { productId, locationId, quantity, strategy = ALLOCATION.FEFO } = params
+  const { productId, locationId, quantity, strategy = ALLOCATION.FEFO, ...options } = params
   if (quantity <= 0) throw new Error('수량은 1 이상이어야 합니다')
 
   const lots = await tx.lot.findMany({
-    where: { productId, locationId, quantity: { gt: 0 } },
+    where: {
+      productId,
+      locationId,
+      quantity: { gt: 0 },
+      ...(options.includeUnsellable ? {} : { expiryDate: { gte: sellableCutoff(options.asOf) } }),
+    },
     orderBy: [{ expiryDate: strategy === ALLOCATION.LEFO ? 'desc' : 'asc' }, { id: 'asc' }],
   })
 
-  const { plan, shortage } = planAllocation(lots, quantity, strategy)
+  const { plan, shortage, available } = planAllocation(lots, quantity, strategy, options)
   if (shortage > 0) {
-    const have = lots.reduce((s, l) => s + l.quantity, 0)
-    throw new InsufficientStockError({ productId, locationId, want: quantity, have })
+    throw new InsufficientStockError({ productId, locationId, want: quantity, have: available })
   }
   return plan
 }
@@ -95,5 +134,5 @@ export async function allocateLots(
 /** 하위 호환 별칭 */
 export const allocateFefo = (
   tx: Prisma.TransactionClient,
-  params: { productId: number; locationId: number; quantity: number }
+  params: { productId: number; locationId: number; quantity: number } & AllocationOptions
 ) => allocateLots(tx, { ...params, strategy: ALLOCATION.FEFO })

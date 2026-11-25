@@ -19,7 +19,7 @@ import bcrypt from 'bcryptjs'
 import { PrismaBetterSqlite3 } from '@prisma/adapter-better-sqlite3'
 import { PrismaClient } from '../src/generated/prisma/client'
 import { applyMovement } from '../src/lib/stock'
-import { ALLOCATION, allocateLots } from '../src/lib/fefo'
+import { ALLOCATION, allocateLots, allowsUnsellable } from '../src/lib/fefo'
 import { addDays, today } from '../src/lib/date'
 import { LOCATION_TYPES, MOVEMENT_TYPES, POPUP_STATUS, TRANSFER_STATUS } from '../src/lib/constants'
 
@@ -136,6 +136,9 @@ async function main() {
         locationId: own.id,
         quantity: qty,
         strategy: ALLOCATION.FEFO,
+        // 판매 가능 기준(만료 7일 전)은 그 날짜 기준으로 판정한다 — 파손만 예외 (06 §4.2)
+        includeUnsellable: allowsUnsellable(reason),
+        asOf: ago(daysAgo),
       })
       for (const a of plan) {
         await applyMovement(t, {
@@ -177,6 +180,7 @@ async function main() {
           locationId: own.id,
           quantity: line.qty,
           strategy: ALLOCATION.LEFO, // ★ 발송은 출고와 반대
+          includeUnsellable: true, // 거점 간 이동은 판매가 아니다 (06 §4.2)
         })
         for (const a of plan) {
           await t.transferLine.create({
@@ -226,6 +230,7 @@ async function main() {
         locationId: location.id,
         quantity: qty,
         strategy: ALLOCATION.FEFO,
+        asOf: ago(daysAgo),
       })
       for (const a of plan) {
         await applyMovement(t, {
@@ -318,6 +323,7 @@ async function main() {
         locationId: own.id,
         quantity: qty,
         strategy: ALLOCATION.FEFO,
+        asOf: ago(daysAgo),
       })
       for (const a of plan) {
         await applyMovement(t, {
@@ -362,6 +368,7 @@ async function main() {
       locationId: ffB.id,
       quantity: 2,
       strategy: ALLOCATION.FEFO,
+      includeUnsellable: true, // 재고 대조 차이는 판매가 아니다
     })
     for (const a of plan) {
       await applyMovement(t, {

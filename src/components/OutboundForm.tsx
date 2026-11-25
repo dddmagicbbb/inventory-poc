@@ -9,7 +9,13 @@ import { ProductPicker, type PickProduct } from './ProductPicker'
 import { ExpiryBadge } from './StatusBadge'
 import { Qty } from './Qty'
 import { saveOutbound } from '@/actions/outbound'
-import { ALLOCATION_REASON, planFefo } from '@/lib/fefo'
+import {
+  ALLOCATION_REASON,
+  allowsUnsellable,
+  isSellableLot,
+  planFefo,
+  SELLABLE_MIN_DAYS,
+} from '@/lib/fefo'
 import { formatDate, humanizeRemaining } from '@/lib/date'
 import { expiryStatus } from '@/lib/expiry'
 import { OUTBOUND_REASONS, REASON_LABEL, type ReasonCode } from '@/lib/constants'
@@ -54,9 +60,11 @@ export function OutboundForm({
   const stock = myLots.reduce((s, l) => s + l.quantity, 0)
 
   // 화면 미리보기와 서버가 같은 함수를 쓴다
-  const { plan, shortage } = useMemo(
-    () => planFefo(myLots, Number(qty) || 0),
-    [myLots, qty]
+  // 판매 등에서는 유통기한 7일 미만 남은 로트(만료 포함)를 빼고 배분한다 — 파손 · 폐기만 예외 (06 §4.2)
+  const includeUnsellable = allowsUnsellable(reason)
+  const { plan, shortage, available, excluded } = useMemo(
+    () => planFefo(myLots, Number(qty) || 0, { includeUnsellable }),
+    [myLots, qty, includeUnsellable]
   )
 
   const manualTotal = Object.values(manualQty).reduce((s, v) => s + (Number(v) || 0), 0)
@@ -183,7 +191,11 @@ export function OutboundForm({
               })}
               {shortage > 0 && (
                 <p className="mx-4 mt-2 rounded-xl bg-red-bg px-3.5 py-2.5 text-[12px] font-bold text-red">
-                  재고가 {shortage}개 부족합니다 (보유 {stock}개)
+                  재고가 {shortage}개 부족합니다 (
+                  {excluded > 0
+                    ? `판매 가능 ${available}개 · 유통기한 ${SELLABLE_MIN_DAYS}일 미만 ${excluded}개 제외`
+                    : `보유 ${stock}개`}
+                  )
                 </p>
               )}
               <p className="mx-4 mt-3 text-[11.5px] text-[#5b5570]">
@@ -214,26 +226,36 @@ export function OutboundForm({
           {myLots
             .slice()
             .sort((a, b) => a.expiryDate.getTime() - b.expiryDate.getTime())
-            .map((l) => (
-              <div
-                key={l.id}
-                className="flex items-center justify-between border-b border-line px-4 py-2.5"
-              >
-                <div>
-                  <p className="text-[12.5px] font-bold tnum">{formatDate(l.expiryDate)}</p>
-                  <p className="text-[10.5px] text-sub">
-                    보유 {l.quantity}{product.unit} · {humanizeRemaining(l.expiryDate)}
-                  </p>
+            .map((l) => {
+              const blocked = !includeUnsellable && !isSellableLot(l.expiryDate)
+              return (
+                <div
+                  key={l.id}
+                  className="flex items-center justify-between border-b border-line px-4 py-2.5"
+                >
+                  <div>
+                    <p className="text-[12.5px] font-bold tnum">{formatDate(l.expiryDate)}</p>
+                    <p className="text-[10.5px] text-sub">
+                      보유 {l.quantity}{product.unit} · {humanizeRemaining(l.expiryDate)}
+                    </p>
+                    {blocked && (
+                      <p className="text-[10.5px] font-bold text-red">
+                        유통기한 {SELLABLE_MIN_DAYS}일 미만 — 파손 · 폐기로만 뺄 수 있습니다
+                      </p>
+                    )}
+                  </div>
+                  {!blocked && (
+                    <QtyInput
+                      size="sm"
+                      className="w-24"
+                      value={manualQty[l.id] ?? ''}
+                      onChange={(v) => setManualQty((p) => ({ ...p, [l.id]: v }))}
+                      unit={product.unit}
+                    />
+                  )}
                 </div>
-                <QtyInput
-                  size="sm"
-                  className="w-24"
-                  value={manualQty[l.id] ?? ''}
-                  onChange={(v) => setManualQty((p) => ({ ...p, [l.id]: v }))}
-                  unit={product.unit}
-                />
-              </div>
-            ))}
+              )
+            })}
           <p className="px-4 py-2 text-[12px] font-bold text-acc">합계 {manualTotal}{product.unit}</p>
           <input
             value={note}

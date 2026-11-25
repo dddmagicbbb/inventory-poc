@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { BulkInputRow } from './BulkInputRow'
 import { shipOutPopup } from '@/actions/popup'
-import { ALLOCATION, planAllocation } from '@/lib/fefo'
+import { ALLOCATION, planAllocation, SELLABLE_MIN_DAYS } from '@/lib/fefo'
 import { formatDate } from '@/lib/date'
 
 export type ShipRow = {
@@ -53,7 +53,7 @@ export function PopupShipOut({
     () =>
       rows.map((row) => {
         const qty = Number(values[row.productId] ?? '') || 0
-        const { plan, shortage } = planAllocation(
+        const { plan, shortage, available, excluded } = planAllocation(
           row.lots.map((l) => ({ id: l.id, expiryDate: new Date(l.expiry), quantity: l.quantity })),
           qty,
           ALLOCATION.FEFO
@@ -62,6 +62,8 @@ export function PopupShipOut({
           row,
           qty,
           shortage,
+          available,
+          excluded,
           plan: plan.map((p) => ({ expiry: formatDate(new Date(p.expiryDate)), qty: p.qty })),
         }
       }),
@@ -130,7 +132,11 @@ export function PopupShipOut({
             info={<>보유 {c.row.sourceStock.toLocaleString()}</>}
             result={
               c.shortage > 0 ? (
-                <b className="text-red">창고 보유보다 {c.shortage}개 많습니다</b>
+                <b className="text-red">
+                  {c.excluded > 0
+                    ? `재고가 부족합니다 — 판매 가능 ${c.available}개 (유통기한 ${SELLABLE_MIN_DAYS}일 미만 ${c.excluded}개 제외)`
+                    : `창고 보유보다 ${c.shortage}개 많습니다`}
+                </b>
               ) : c.qty > 0 ? (
                 c.plan.map((p) => `${p.expiry}에서 ${p.qty}${c.row.unit}`).join(' · ')
               ) : (
