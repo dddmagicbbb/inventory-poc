@@ -2,6 +2,8 @@
 
 > Playwright(Chromium, 모바일 폭 400×860)로 실제 화면을 조작해 찾은 결함 목록이다.
 > 시드 데이터 기준 · 계정 `warehouse@demo.kr` · `npm run dev` 환경.
+>
+> **2026-11-24 GitHub Issue로 이관 완료.** 작업의 원본은 각 Issue다 — ISSUE-01~11 → [#2](https://github.com/dddmagicbbb/inventory-poc/issues/2) ~ [#12](https://github.com/dddmagicbbb/inventory-poc/issues/12) (번호 순서 그대로). 이 문서는 테스트 기록으로만 남는다.
 
 ## 요약
 
