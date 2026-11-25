@@ -6,7 +6,9 @@ body:
     attributes:
       value: |
         이 Issue는 **작업 계약서**다. 에이전트는 여기 적힌 범위 안에서만 작업하고, 종료 조건과 기계 검증으로 완료를 판정한다.
-        도메인 · 아키텍처 판단은 이 Issue가 아니라 원본(`docs/01-requirements.md`, `docs/06-architecture.md`)을 따른다. 둘이 충돌하면 에이전트는 `NEEDS_HUMAN`을 선언하고 멈춘다.
+        도메인 · 아키텍처 판단은 이 Issue가 아니라 원본(`docs/01-requirements.md`, `docs/06-architecture.md`)을 따른다. 둘이 충돌하면 에이전트는 `NEEDS_HUMAN`을 선언하고 멈춘다 (해제 절차: `docs/harness/SSOT.md` §7).
+
+        진행 상태 · 결정 · 남은 질문 · 루프 횟수는 **이 Issue의 작업 기록 코멘트**에 남는다 (`docs/harness/Workflow.md` §3). 세션이 바뀌어도 이 Issue만 읽으면 이어갈 수 있어야 한다.
 
   - type: textarea
     id: background
@@ -64,6 +66,7 @@ body:
         - 요구사항 · 아키텍처: `docs/01-requirements.md`, `docs/06-architecture.md`
         - 하네스 규칙: `docs/harness/`, `AGENTS.md`, `CLAUDE.md`
         - 검증 스크립트: `package.json`의 검증 단계, `scripts/verify-*.ts`, `scripts/check-architecture.ts`, `.github/workflows/`
+        - 조건부: `prisma/seed.ts` · 기존 테스트의 기대값 — 바꾸면 근거를 작업 기록에 남긴다 (`docs/harness/SSOT.md` §8)
 
         이 작업에서 추가로 지킬 것
         -
@@ -83,3 +86,15 @@ body:
       default: 2
     validations:
       required: true
+
+  - type: textarea
+    id: sources
+    attributes:
+      label: 7. 관련 원본
+      description: 이 작업의 판단 근거가 되는 원본 절. 에이전트가 이 절부터 읽는다. 모르면 비워 둔다.
+      placeholder: |
+        예)
+        - docs/06-architecture.md §4.2 로트 배분
+        - docs/01-requirements.md §3 F9
+    validations:
+      required: false
